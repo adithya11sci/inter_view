@@ -6,6 +6,9 @@ export const UI = ({ hidden, ...props }) => {
   const { chat, loading, cameraZoomed, setCameraZoomed, message } = useChat();
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState(null);
+  const isListeningRef = useRef(false);
+  const finalTranscriptRef = useRef('');
+  const silenceTimeoutRef = useRef(null);
 
   const sendMessage = () => {
     const text = input.current.value;
@@ -30,13 +33,12 @@ export const UI = ({ hidden, ...props }) => {
     recognitionInstance.lang = 'en-US';
     recognitionInstance.maxAlternatives = 1;
 
-    let finalTranscript = '';
-    let restartTimeout;
+    isListeningRef.current = true;
+    finalTranscriptRef.current = '';
 
     recognitionInstance.onstart = () => {
+      console.log('🎤 Voice recognition started - speak now!');
       setIsListening(true);
-      finalTranscript = '';
-      console.log('Voice recognition started - speak now!');
     };
 
     recognitionInstance.onresult = (event) => {
@@ -45,56 +47,108 @@ export const UI = ({ hidden, ...props }) => {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript + ' ';
+          finalTranscriptRef.current += transcript + ' ';
+          console.log('✅ Final:', transcript);
         } else {
           interimTranscript += transcript;
+          console.log('⏳ Interim:', transcript);
         }
       }
       
       // Update input field with final + interim text
-      input.current.value = (finalTranscript + interimTranscript).trim();
-      console.log('Transcribing:', input.current.value);
+      input.current.value = (finalTranscriptRef.current + interimTranscript).trim();
       
-      // Clear any existing restart timeout
-      if (restartTimeout) {
-        clearTimeout(restartTimeout);
+      // Clear any existing silence timeout
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
       }
       
-      // Set a timeout to stop after 2 seconds of silence
-      restartTimeout = setTimeout(() => {
-        if (recognitionInstance && isListening) {
-          recognitionInstance.stop();
+      // Set a timeout to stop after 3 seconds of silence
+      silenceTimeoutRef.current = setTimeout(() => {
+        if (isListeningRef.current && recognitionInstance) {
+          console.log('⏸️ Stopping due to silence');
+          isListeningRef.current = false;
+          try {
+            recognitionInstance.stop();
+          } catch (e) {
+            console.log('Already stopped');
+          }
         }
-      }, 2000);
+      }, 3000);
     };
 
     recognitionInstance.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
+      console.error('❌ Speech recognition error:', event.error);
       
-      // Don't stop on 'no-speech' error, just log it
+      // Don't stop on 'no-speech' error - just restart
       if (event.error === 'no-speech') {
-        console.log('No speech detected, keep microphone on');
+        console.log('🔄 No speech detected, restarting...');
+        if (isListeningRef.current) {
+          setTimeout(() => {
+            if (isListeningRef.current) {
+              try {
+                recognitionInstance.start();
+              } catch (e) {
+                console.log('Could not restart:', e);
+              }
+            }
+          }, 100);
+        }
+        return;
+      }
+      
+      // For 'aborted' error, try to restart
+      if (event.error === 'aborted' && isListeningRef.current) {
+        console.log('🔄 Recognition aborted, restarting...');
+        setTimeout(() => {
+          if (isListeningRef.current) {
+            try {
+              recognitionInstance.start();
+            } catch (e) {
+              console.log('Could not restart:', e);
+            }
+          }
+        }, 100);
         return;
       }
       
       // For other errors, stop listening
+      isListeningRef.current = false;
       setIsListening(false);
-      if (restartTimeout) {
-        clearTimeout(restartTimeout);
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
       }
     };
 
     recognitionInstance.onend = () => {
-      console.log('Voice recognition ended');
-      setIsListening(false);
+      console.log('🛑 Voice recognition ended');
       
-      if (restartTimeout) {
-        clearTimeout(restartTimeout);
-      }
-      
-      // Auto-send when voice input completes if there's text
-      if (input.current.value.trim()) {
-        sendMessage();
+      // If we're still supposed to be listening, restart it
+      if (isListeningRef.current) {
+        console.log('🔄 Auto-restarting recognition...');
+        setTimeout(() => {
+          if (isListeningRef.current) {
+            try {
+              recognitionInstance.start();
+            } catch (e) {
+              console.log('Could not restart:', e);
+              isListeningRef.current = false;
+              setIsListening(false);
+            }
+          }
+        }, 100);
+      } else {
+        // User stopped it manually
+        setIsListening(false);
+        
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+        }
+        
+        // Auto-send when voice input completes if there's text
+        if (input.current.value.trim()) {
+          sendMessage();
+        }
       }
     };
 
@@ -103,19 +157,28 @@ export const UI = ({ hidden, ...props }) => {
       recognitionInstance.start();
     } catch (error) {
       console.error('Failed to start recognition:', error);
+      isListeningRef.current = false;
       setIsListening(false);
     }
   };
 
   const stopVoiceInput = () => {
+    console.log('🛑 Manually stopping voice input');
+    isListeningRef.current = false;
+    finalTranscriptRef.current = '';
+    
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+    }
+    
     if (recognition) {
       try {
         recognition.stop();
       } catch (error) {
         console.log('Recognition already stopped');
       }
-      setIsListening(false);
     }
+    setIsListening(false);
   };
   if (hidden) {
     return null;
