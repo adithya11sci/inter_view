@@ -1,0 +1,25 @@
+# Dependencies
+
+node_modules/
+venv/
+**pycache**/
+
+# Environment variables
+
+.env
+
+# VS Code history (stores old files like .env versions)
+
+.history/
+
+# Backend generated audio files
+
+Sona - BACKEND/audios/
+Sona - BACKEND/bin/
+Sona - BACKEND/test.mp3
+
+# Audio file types
+
+*.wav
+*.mp3
+*.json

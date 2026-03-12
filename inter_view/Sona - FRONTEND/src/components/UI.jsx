@@ -24,42 +24,96 @@ export const UI = ({ hidden, ...props }) => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognitionInstance = new SpeechRecognition();
     
-    recognitionInstance.continuous = false;
-    recognitionInstance.interimResults = false;
+    // Enable continuous listening and interim results
+    recognitionInstance.continuous = true;
+    recognitionInstance.interimResults = true;
     recognitionInstance.lang = 'en-US';
+    recognitionInstance.maxAlternatives = 1;
+
+    let finalTranscript = '';
+    let restartTimeout;
 
     recognitionInstance.onstart = () => {
       setIsListening(true);
-      console.log('Voice recognition started');
+      finalTranscript = '';
+      console.log('Voice recognition started - speak now!');
     };
 
     recognitionInstance.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      input.current.value = transcript;
-      console.log('Voice input:', transcript);
+      let interimTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+      
+      // Update input field with final + interim text
+      input.current.value = (finalTranscript + interimTranscript).trim();
+      console.log('Transcribing:', input.current.value);
+      
+      // Clear any existing restart timeout
+      if (restartTimeout) {
+        clearTimeout(restartTimeout);
+      }
+      
+      // Set a timeout to stop after 2 seconds of silence
+      restartTimeout = setTimeout(() => {
+        if (recognitionInstance && isListening) {
+          recognitionInstance.stop();
+        }
+      }, 2000);
     };
 
     recognitionInstance.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
+      
+      // Don't stop on 'no-speech' error, just log it
+      if (event.error === 'no-speech') {
+        console.log('No speech detected, keep microphone on');
+        return;
+      }
+      
+      // For other errors, stop listening
       setIsListening(false);
+      if (restartTimeout) {
+        clearTimeout(restartTimeout);
+      }
     };
 
     recognitionInstance.onend = () => {
-      setIsListening(false);
       console.log('Voice recognition ended');
-      // Auto-send when voice input completes
+      setIsListening(false);
+      
+      if (restartTimeout) {
+        clearTimeout(restartTimeout);
+      }
+      
+      // Auto-send when voice input completes if there's text
       if (input.current.value.trim()) {
         sendMessage();
       }
     };
 
     setRecognition(recognitionInstance);
-    recognitionInstance.start();
+    try {
+      recognitionInstance.start();
+    } catch (error) {
+      console.error('Failed to start recognition:', error);
+      setIsListening(false);
+    }
   };
 
   const stopVoiceInput = () => {
     if (recognition) {
-      recognition.stop();
+      try {
+        recognition.stop();
+      } catch (error) {
+        console.log('Recognition already stopped');
+      }
       setIsListening(false);
     }
   };
@@ -138,7 +192,7 @@ export const UI = ({ hidden, ...props }) => {
         <div className="flex items-center gap-2 pointer-events-auto max-w-screen-sm w-full mx-auto">
           <input
             className="w-full placeholder:text-gray-800 placeholder:italic p-4 rounded-md bg-opacity-50 bg-white backdrop-blur-md"
-            placeholder="Type a message..."
+            placeholder="Type a message or click the mic..."
             ref={input}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -146,6 +200,41 @@ export const UI = ({ hidden, ...props }) => {
               }
             }}
           />
+          <button
+            disabled={loading || message}
+            onClick={isListening ? stopVoiceInput : startVoiceInput}
+            className={`${
+              isListening 
+                ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                : 'bg-purple-500 hover:bg-purple-600'
+            } text-white p-4 font-semibold rounded-md ${
+              loading || message ? "cursor-not-allowed opacity-30" : ""
+            }`}
+            title={isListening ? "Stop recording" : "Voice input"}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className="w-6 h-6"
+            >
+              {isListening ? (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"
+                />
+              ) : (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
+                />
+              )}
+            </svg>
+          </button>
           <button
             disabled={loading || message}
             onClick={sendMessage}
