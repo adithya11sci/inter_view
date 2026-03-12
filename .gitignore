@@ -23,3 +23,7 @@ Sona - BACKEND/test.mp3
 *.wav
 *.mp3
 *.json
+.env
+.history
+node_modules
+*.log
