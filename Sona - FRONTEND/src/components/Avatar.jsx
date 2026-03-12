@@ -116,6 +116,8 @@ export function Avatar(props) {
     console.log(message);
     if (!message) {
       setAnimation("Idle");
+      setLipsync(null);
+      setAudio(null);
       return;
     }
     setAnimation(message.animation || "Idle");
@@ -133,7 +135,11 @@ export function Avatar(props) {
       onMessagePlayed(); // Continue to next message if audio fails
     });
     setAudio(audioToPlay);
-    audioToPlay.onended = onMessagePlayed;
+    audioToPlay.onended = () => {
+      setLipsync(null);
+      setAudio(null);
+      onMessagePlayed();
+    };
   }, [message]);
 
   const { animations } = useGLTF("/models/animations.glb");
@@ -230,11 +236,12 @@ export function Avatar(props) {
       }
     }
 
+    // Close mouth faster and more reliably
     Object.values(corresponding).forEach((value) => {
       if (appliedMorphTargets.includes(value)) {
         return;
       }
-      lerpMorphTarget(value, 0, 0.1);
+      lerpMorphTarget(value, 0, 0.3);
     });
   });
 
