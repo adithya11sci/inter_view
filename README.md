@@ -1,105 +1,99 @@
 # Sona: Professional Interview Assistant 🎙️🤖
 
-Sona is a state-of-the-art 3D Virtual AI Assistant designed to help professionals and students prepare for technical and behavioral interviews. Combining the power of local LLMs with advanced 3D character animation and high-quality voice synthesis, Sona provides an immersive mock interview experience.
-
----
+Sona is a 3D virtual interview coach that helps users practice technical and behavioral interviews through voice-based, animated conversations.
 
 ## ✨ Features
+- 3D avatar with real-time facial animation and lip sync
+- Professional interview-style responses powered by Groq LLM APIs
+- Voice generation using Microsoft Edge TTS voices
+- Full-stack architecture with React frontend + Node/FastAPI backend
 
-- **Professional Persona**: Highly experienced technical interviewer persona powered by DeepSeek-R1.
-- **3D Interactive Avatar**: Realistic 3D character with lip-sync and dynamic facial expressions.
-- **Voice Synthesis**: Premium AI voices powered by ElevenLabs.
-- **Local & Fast**: Logic runs locally using Ollama for privacy and speed.
-- **Responsive Web UI**: Built with React, Three.js, and TailwindCSS for a premium feel.
-
----
-
-## 🛠️ Technology Stack
-
-- **Frontend**: React, React Three Fiber (Three.js), TailwindCSS, Vite.
-- **Backend (Logic)**: Node.js (Express) for orchestration.
-- **Backend (AI)**: FastAPI (Python) for LLM management.
-- **Intelligence**: DeepSeek-R1 (via Ollama).
-- **Voice**: ElevenLabs API with `eleven_multilingual_v2` support.
-- **Lip-Sync**: Rhubarb Lip Sync.
-
----
-
-## 🚀 Getting Started
-
-### 1. Prerequisites
-- **Node.js** (v18+)
-- **Python** (v3.9+)
-- **Ollama**: [Download here](https://ollama.com/)
-- **Rhubarb Lip-Sync**: Ensure the binary is available.
-
-### 2. Setup Ollama
-Pull the required model:
-```bash
-ollama pull deepseek-r1:1.5b
+## 🧱 Project Structure
+```text
+Sona - FRONTEND/   # React + Vite + React Three Fiber UI
+Sona - BACKEND/    # Node.js orchestrator + FastAPI LLM service
 ```
 
-### 3. Backend Setup
-Navigate to the backend directory and install dependencies:
+## 🛠️ Tech Stack
+- Frontend: React, Vite, TailwindCSS, Three.js (@react-three/fiber, @react-three/drei)
+- Backend API: Node.js + Express
+- AI Service: FastAPI + Groq SDK
+- TTS: `edge-tts` CLI
+- Lip Sync: Rhubarb Lip Sync (optional fallback supported)
+
+## ✅ Prerequisites
+- Node.js 18+
+- Python 3.9+
+- FFmpeg + FFprobe (must be available in `PATH`)
+- `edge-tts` CLI (install via pip)
+- Rhubarb Lip Sync (optional, for higher quality lip sync)
+
+## 🔐 Environment Variables
+Create `Sona - BACKEND/.env` with:
+
+```env
+GROQ_API_KEY=your_groq_api_key
+```
+
+> `GROQ_API_KEY` is required for `main.py` to generate responses.
+
+## 🚀 Setup
+
+### 1) Backend setup (Node + Python)
 ```bash
 cd "Sona - BACKEND"
-# Install Python dependencies
+
+# Node dependencies
+npm install
+
+# Python environment
 python -m venv venv
-./venv/Scripts/activate # Windows
+venv\Scripts\activate
 pip install -r requirements.txt
 
-# Install Node dependencies
-npm install
+# Ensure edge-tts is installed
+pip install edge-tts
 ```
 
-Create a `.env` file in `Sona - BACKEND`:
-```properties
-ELEVEN_LABS_API_KEY=your_api_key_here
-```
-
-### 4. Frontend Setup
-Navigate to the frontend directory and install dependencies:
+### 2) Frontend setup
 ```bash
 cd "Sona - FRONTEND"
 npm install
 ```
 
----
+## ▶️ Run the App
+Start all 3 processes in separate terminals.
 
-## 🚦 Running the Application
+1. FastAPI LLM service (port `8000`)
+```bash
+cd "Sona - BACKEND"
+venv\Scripts\activate
+python main.py
+```
 
-You need to start three services:
+2. Node orchestration API (port `3000`)
+```bash
+cd "Sona - BACKEND"
+npm run dev
+```
 
-1. **Python AI Server**:
-   ```bash
-   cd "Sona - BACKEND"
-   ./venv/Scripts/activate
-   python main.py
-   ```
+3. Frontend app (default Vite port `5173`)
+```bash
+cd "Sona - FRONTEND"
+npm run dev
+```
 
-2. **Node Orchestrator**:
-   ```bash
-   cd "Sona - BACKEND"
-   npm run dev
-   ```
+Open: http://localhost:5173
 
-3. **Web Interface**:
-   ```bash
-   cd "Sona - FRONTEND"
-   npm run dev
-   ```
+## 🔌 Main API Endpoints
+- `GET /` — health check
+- `GET /voices` — available TTS voices
+- `POST /chat` — interview response + audio + lipsync payload
 
-Open **[http://localhost:5173](http://localhost:5173)** to start your interview practice!
-
----
-
-## 📸 Screenshots & Demo
-
-Watch Sona in action and view her 3D capabilities:
-
-[![Sona Demo Video](https://github.com/Addhithya/Sona/blob/main/Sona%20-%20FRONTEND/public/Screenshot%202024-08-10%20at%2022.29.15.png)](https://github.com/Addhithya/Sona/blob/main/Sona%20-%20FRONTEND/public/3D%20chatbot%20demo720p.mp4)
-
----
+## 🧪 Troubleshooting
+- If TTS fails, verify `edge-tts` is installed and available in `PATH`.
+- If lip sync file generation fails, install Rhubarb or rely on the built-in basic lip-sync fallback.
+- If AI calls fail, confirm `GROQ_API_KEY` is set and FastAPI is running on port `8000`.
 
 ## 📄 License
-This project is licensed under the MIT License.
+MIT
