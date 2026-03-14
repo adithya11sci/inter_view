@@ -15,7 +15,11 @@
 body {
   margin: 0;
   background-color: #ca79f8;
-  background-image: linear-gradient(9deg, #dda1eb 10%, #cf5aef 90%);
+  background-image: url('/bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 body.greenScreen {
